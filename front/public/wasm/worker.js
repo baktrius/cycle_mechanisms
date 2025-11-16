@@ -15,7 +15,7 @@ var Module = {
         this.totalDependencies = Math.max(this.totalDependencies, left);
         Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
     },
-    locateFile: (path) => `/wasm/${path}`, // Ensures .wasm resolves
+    locateFile: (path) => `./${path}`, // Ensures .wasm resolves
 };
 self.onerror = (event) => {
     // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
