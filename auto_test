@@ -1,0 +1,21 @@
+#!/bin/bash
+
+test () {
+    ref=$1
+    file=`basename $ref`
+    params=`echo $file | tr _ ' '`
+    data=data/$file
+
+    # preparing actual program result
+    ./main $params > $data 2> /dev/null
+
+    # comparing actual result with referential one
+    printf '%-40s' "$file"
+    s=`diff $ref $data` && echo -e "\033[32m success\033[0m" || echo -e "\033[31m fail\033[0m\n$s\n"
+}
+
+mkdir -p data
+for path in ref/*
+do
+    test $path
+done
