@@ -1,0 +1,6 @@
+build_wasm.stamp
+main.js
+main.wasm
+front/.nvmrc
+front/public/wasm/main.js
+front/public/wasm/main.wasm
