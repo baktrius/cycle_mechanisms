@@ -4,3 +4,4 @@ main.wasm
 front/.nvmrc
 front/public/wasm/main.js
 front/public/wasm/main.wasm
+main
