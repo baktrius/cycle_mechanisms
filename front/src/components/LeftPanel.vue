@@ -1,7 +1,8 @@
 <script setup>
 import Mechanism from "./Mechanism.vue";
-import { ref, computed } from "vue";
+import { ref, computed, toRaw } from "vue";
 import { useRunsStore } from "../runsStore.js";
+import { configToArgs } from "../configToArgs.js";
 
 const store = useRunsStore();
 
@@ -13,49 +14,10 @@ const numOfAgents2 = ref(3);
 const task = ref("D");
 const statesType = ref("all");
 const numDistinctVotes = ref(1);
-const verbosity = ref("S");
-const calculationsLimit = ref(0);
+const verbosity = ref("V1");
+const calculationsLimit = ref(1000);
+const calculationsLimitEnabled = ref(false);
 const multirunsEnabled = ref(false);
-
-function mechanismToArgs(mech) {
-  const res = [];
-  if (mech.type === "mix") {
-    res.push(...mechanismToArgs(mech.right));
-    res.push(`M${mech.ratio}`);
-    res.push(...mechanismToArgs(mech.left));
-    return res;
-  }
-  res.push(mech.type);
-  if (mech.type === "qcd") {
-    res.push(mech.threshold ?? 0);
-  } else if (mech.type === "dbl") {
-    res.push(mech.exponent ?? 1);
-  }
-  return res;
-}
-
-function statesTypeToArgs() {
-  if (statesType.value === "I") {
-    return ["I"];
-  } else if (statesType.value === "J") {
-    return [`J${numDistinctVotes.value}`];
-  }
-  return [];
-}
-
-function buildArgs(nAgents, nVertices) {
-  return [
-    `N${nAgents}`,
-    task.value,
-    verbosity.value,
-    ...statesTypeToArgs(),
-    nVertices,
-    ...mechanismToArgs(mechanism.value),
-    ...(Number(calculationsLimit.value) > 0
-      ? [`L${calculationsLimit.value}`]
-      : []),
-  ];
-}
 
 const numOfVerticesPair = computed(() => {
   let nv = numOfVertices.value || 1;
@@ -68,8 +30,53 @@ const numOfAgentsPair = computed(() => {
   return [na, na2].sort((a, b) => a - b);
 });
 
+const numOfRuns = computed(() => {
+  return (
+    (numOfAgentsPair.value[1] - numOfAgentsPair.value[0] + 1) *
+    (numOfVerticesPair.value[1] - numOfVerticesPair.value[0] + 1)
+  );
+});
+
+const runButtonText = computed(() => {
+  return numOfRuns.value > 1
+    ? `Run Solver (${numOfRuns.value} runs)`
+    : "Run Solver";
+});
+
 function rangeString(min, max) {
   return min === max ? `${min}` : `${min}..${max}`;
+}
+
+// return an array of integers between start and end (inclusive)
+function range(start, end) {
+  const s = Number(start);
+  const e = Number(end);
+  if (!Number.isFinite(s) || !Number.isFinite(e)) return [];
+  const step = s <= e ? 1 : -1;
+  const res = [];
+  for (let i = s; step > 0 ? i <= e : i >= e; i += step) {
+    res.push(i);
+  }
+  return res;
+}
+
+function buildConfig(numAgents, numVertices) {
+  return {
+    numAgents: numAgents,
+    numVertices: numVertices,
+    task: task.value,
+    verbosity: verbosity.value,
+    statesType: statesType.value,
+    numDistinctVotes: numDistinctVotes.value,
+    calculationsLimit: calculationsLimitEnabled.value
+      ? calculationsLimit.value
+      : -1,
+    mechanism: structuredClone(toRaw(mechanism.value)),
+  };
+}
+
+function buildArgs(numAgents, numVertices) {
+  return configToArgs(buildConfig(numAgents, numVertices));
 }
 
 const argsPreview = computed(() => {
@@ -77,15 +84,27 @@ const argsPreview = computed(() => {
   const verticesTok = rangeString(...numOfVerticesPair.value);
   return buildArgs(agentsTok, verticesTok);
 });
+
 function runSolver() {
+  const ids = [];
   for (let a = numOfAgentsPair.value[0]; a <= numOfAgentsPair.value[1]; a++) {
+    const row = [];
     for (
       let v = numOfVerticesPair.value[0];
       v <= numOfVerticesPair.value[1];
       v++
     ) {
-      store.addRun(buildArgs(a, v));
+      row.push(store.addRun(buildArgs(a, v)));
     }
+    ids.push(row);
+  }
+  if (numOfRuns.value > 1 && verbosity.value === "V1") {
+    store.addOverview(
+      argsPreview.value,
+      range(...numOfAgentsPair.value),
+      range(...numOfVerticesPair.value),
+      ids
+    );
   }
 }
 </script>
@@ -189,9 +208,9 @@ function runSolver() {
       <div class="form-group">
         <label for="verbosity">Verbosity</label>
         <select id="verbosity" v-model="verbosity">
+          <option value="V1">Inline Answer</option>
           <option value="S">Summary</option>
           <option value="V3">All</option>
-          <!-- <option value="V1">Inline Answer</option> -->
           <option value="V0">None</option>
         </select>
       </div>
@@ -199,37 +218,40 @@ function runSolver() {
       <div class="form-group">
         <div class="label-row">
           <label for="calculations-limit">Calculations limit</label>
-          <div
-            class="info"
-            tabindex="0"
-            role="button"
-            aria-label="Calculations limit info"
-          >
-            i
-            <div class="tooltip">
-              Set to 0 for no limit. When &gt;0 the frontend sends an
-              <code>L&lt;n&gt;</code> flag to the solver.
-            </div>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <label
+              style="
+                font-weight: normal;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+              "
+            >
+              <input type="checkbox" v-model="calculationsLimitEnabled" />
+              Enable
+            </label>
           </div>
         </div>
         <input
           id="calculations-limit"
           type="number"
           v-model.number="calculationsLimit"
-          min="0"
+          min="1"
+          v-if="calculationsLimitEnabled"
         />
       </div>
 
-      <label for="args">Args</label>
+      <label for="args">Resulting Args</label>
       <input type="text" :value="argsPreview.join(' ')" readonly id="args" />
-      <label for="warnings">Warnings</label>
-      <textarea rows="10" readonly id="warnings"></textarea>
-      <button @click="runSolver">Run Solver</button>
+      <button @click="runSolver">{{ runButtonText }}</button>
     </fieldset>
   </form>
 </template>
 
 <style scoped>
+h3 {
+  margin: 5px 0;
+}
 label {
   display: block;
 }
@@ -241,6 +263,11 @@ button {
   padding: 2px;
   width: 100%;
   box-sizing: border-box;
+}
+form > fieldset > input,
+form > fieldset > select,
+form > fieldset > button {
+  margin-bottom: 8px;
 }
 
 fieldset {
@@ -254,39 +281,6 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-.info {
-  position: relative;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  color: #000;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  cursor: default;
-}
-.info:focus {
-  outline: 2px solid rgba(0, 0, 0, 0.2);
-}
-.info .tooltip {
-  display: none;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  z-index: 20;
-  width: 100px;
-}
-.info:hover .tooltip,
-.info:focus .tooltip {
-  display: block;
 }
 
 .range-row {

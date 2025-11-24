@@ -1,5 +1,6 @@
 <script setup>
 import SolverPanel from "./SolverPanel.vue";
+import OverviewPanel from "./OverviewPanel.vue";
 import { computed } from "vue";
 import { useRunsStore } from "../runsStore";
 
@@ -13,23 +14,58 @@ function closeAll() {
 
 <template>
   <div class="right-panel-content">
-    <div
-      style="display: flex; align-items: center; justify-content: space-between"
-    >
+    <div class="header">
       <h3>Runs</h3>
       <div>
         <button @click="closeAll">Close all</button>
       </div>
     </div>
-    <div v-for="{ id } in reversedRuns" :key="id">
-      <SolverPanel :id="id" />
+    <div class="content">
+      <div v-for="{ id, type } in reversedRuns" :key="id">
+        <div class="entry-wrapper">
+          <span class="dot">●</span>
+          <div class="entry">
+            <SolverPanel :id="id" v-if="type === 'run'" />
+            <OverviewPanel :id="id" v-else-if="type === 'overview'" />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+h3 {
+  margin: 5px 0;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 1em;
+  padding-right: 1em;
+  border-bottom: 1px solid #ccc;
+}
+
 .right-panel-content {
-  padding: 1em;
-  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+}
+.content {
+  padding-left: 1em;
+  padding-right: 1em;
+  flex-grow: 1;
+  overflow: auto;
+}
+.entry-wrapper {
+  display: flex;
+}
+.entry {
+  flex-grow: 1;
+}
+.dot {
+  padding: 0 2px;
 }
 </style>

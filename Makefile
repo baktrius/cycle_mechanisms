@@ -18,7 +18,7 @@ mai%_dbg: mai%.cpp lib.h Makefile
 
 # Build WebAssembly module and JS loader together (portable across make versions)
 build_wasm.stamp: main.cpp lib.h Makefile
-	emcc main.cpp -std=c++26 -o main.js -s MODULARIZE=1 -s 'EXPORT_NAME="createModule"' -O3
+	emcc main.cpp -std=c++26 -o main.js -s MODULARIZE=1 -s 'EXPORT_NAME="createModule"' -O3 -s EXIT_RUNTIME=1
 	touch $@
 
 main.js main.wasm: build_wasm.stamp

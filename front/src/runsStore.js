@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { createRun } from './createRun';
+import { createOverview } from './createOverview';
 
 // Pinia store managing a list of runs created by the per-run composable.
 export const useRunsStore = defineStore('runs', {
@@ -8,7 +9,7 @@ export const useRunsStore = defineStore('runs', {
         nextRunId: 0,
         queue: [], // FIFO queue of run ids waiting to start
         activeCount: 0,
-        concurrencyLimit: 8,
+        concurrencyLimit: 16,
     }),
     getters: {
         getRun: (state) => (id) => state.runs.get(id),
@@ -22,6 +23,12 @@ export const useRunsStore = defineStore('runs', {
             // Enqueue and attempt to start if under the limit
             this.queue.push(id);
             this.maybeStartNext();
+            return id;
+        },
+        addOverview(...params) {
+            const id = this.nextRunId++;
+            const overview = createOverview(id, ...params);
+            this.runs.set(id, overview);
             return id;
         },
         maybeStartNext() {
@@ -61,8 +68,8 @@ export const useRunsStore = defineStore('runs', {
         },
         clearRuns() {
             for (const run of this.runs.values()) {
-                run.abort();
-                run.dispose();
+                run.abort?.();
+                run.dispose?.();
             }
             this.queue = [];
             this.runs = new Map();

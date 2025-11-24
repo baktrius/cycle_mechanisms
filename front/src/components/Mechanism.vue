@@ -118,6 +118,7 @@ h3 {
 ul {
   padding-left: 20px;
 }
-li {
+input[type="number"] {
+  width: 50px;
 }
 </style>

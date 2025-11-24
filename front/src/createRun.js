@@ -1,15 +1,18 @@
-import { reactive, toRaw } from 'vue';
+import { reactive, toRaw, computed } from 'vue';
 import { main } from './solver.js';
 
 // Factory for a single run: encapsulates lifecycle and output buffering.
 // Buffer and timer live in closure (non-reactive) for performance.
 export function createRun(id, args, { throttleMs = 100 } = {}) {
     const run = reactive({
+        type: "run",
         id,
         args: [...args],
-        status: 'queued',
+        _status: 'queued',
+        reportedStatus: 'queued',
         output: [],
         abortController: new AbortController(),
+        exitCode: null,
     });
 
     // Non-reactive internals
@@ -32,15 +35,19 @@ export function createRun(id, args, { throttleMs = 100 } = {}) {
         }
     }
 
+    function setStatus(status) {
+        run.reportedStatus = status.join(' ');
+    }
+
     async function start() {
-        if (run.status !== 'queued') return;
-        run.status = 'running';
+        if (run._status !== 'queued') return;
+        run._status = 'running';
         try {
-            await main(toRaw(run.args), print, run.abortController.signal);
-            if (run.status === 'running') run.status = 'completed';
+            run.exitCode = await main(toRaw(run.args), print, run.abortController.signal, setStatus);
+            if (run._status === 'running') run._status = 'completed';
         } catch (err) {
-            if (run.status !== 'aborted') {
-                run.status = 'error';
+            if (run._status !== 'aborted') {
+                run._status = 'error';
                 print('Error:', err?.message ?? String(err));
             }
         } finally {
@@ -49,9 +56,9 @@ export function createRun(id, args, { throttleMs = 100 } = {}) {
     }
 
     function abort() {
-        if (run.status === 'running') {
+        if (run._status === 'running') {
             run.abortController.abort();
-            run.status = 'aborted';
+            run._status = 'aborted';
         }
     }
 
@@ -63,9 +70,65 @@ export function createRun(id, args, { throttleMs = 100 } = {}) {
         buffer = [];
     }
 
+    const status = computed(() => {
+        const res = run._status ?? "unknown";
+        if (res !== "completed") {
+            return res;
+        }
+        switch (run.exitCode) {
+            case 0:
+                return "completed";
+            case 2:
+                return "skipped";
+            case -1:
+                return "aborted";
+            default:
+                return "error";
+        }
+    });
+
+    const statusText = computed(() => {
+        if (status.value === "completed" && run.output.length === 1) {
+            return `answer ${run.output[0]}`;
+        }
+        return status.value;
+    });
+    const ANSWER_MAP = {
+        running: "...",
+        aborted: "X",
+        error: "!",
+        queued: "",
+        unknown: "?",
+        skipped: "-",
+    };
+    const answer = computed(() => {
+        if (status.value === "completed") {
+            if (run.output.length === 1)
+                return `${run.output[0]}`;
+            else if (run.output.length > 1) return '#';
+            else return '-';
+        }
+        return ANSWER_MAP[status.value] ?? "?";
+    });
+    const COLORS = {
+        // more saturated / vivid colors
+        running: "#1E90FF", // dodger blue
+        completed: "#00C853", // vivid green
+        aborted: "#FF6D00", // vivid orange
+        error: "#D50000", // vivid red
+        queued: "#FFD600", // vivid yellow
+        unknown: "#9E9E9E", // neutral gray
+        skipped: "#AA00FF", // vivid purple
+    };
+    const statusColor = computed(() => COLORS[status.value] || "gray");
+
     return Object.assign(run, {
         start,
         abort,
         dispose,
+        status,
+        statusText,
+        statusColor,
+        answer,
     });
 }

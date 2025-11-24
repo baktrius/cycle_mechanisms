@@ -8,7 +8,7 @@ var Module = {
     print,
     printErr: print,
     setStatus: function (...msg) {
-        print(...msg);
+        postMessage({ status: msg });
     },
     totalDependencies: 0,
     monitorRunDependencies(left) {
@@ -16,6 +16,10 @@ var Module = {
         Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
     },
     locateFile: (path) => `./${path}`, // Ensures .wasm resolves
+    onExit(code) {
+        postMessage({ finished: true, exitCode: code });
+        self.close();
+    },
 };
 self.onerror = (event) => {
     // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
@@ -26,8 +30,5 @@ onmessage = (e) => {
     const args = e.data.map(a => a.toString()) || [];
 
     console.log("Worker received args:", args);
-    createModule(Object.assign({ arguments: args }, Module)).then(instance => {
-        postMessage({ finished: true });
-        self.close(); // terminate worker
-    });
+    createModule(Object.assign({ arguments: args }, Module));
 };

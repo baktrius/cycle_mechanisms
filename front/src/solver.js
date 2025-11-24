@@ -1,4 +1,4 @@
-export function main(args, print, abortSignal) {
+export function main(args, print, abortSignal, setStatus) {
     return new Promise((resolve, reject) => {
         const worker = new Worker("wasm/worker.js");
 
@@ -8,9 +8,12 @@ export function main(args, print, abortSignal) {
             if (e.data.print !== undefined) {
                 print(e.data.print);
             }
+            if (e.data.status !== undefined && setStatus !== undefined) {
+                setStatus(e.data.status);
+            }
             if (e.data.finished !== undefined) {
                 worker.terminate();
-                resolve();
+                resolve(e.data.exitCode ?? -1);
             }
         };
 
@@ -22,7 +25,7 @@ export function main(args, print, abortSignal) {
         if (abortSignal) {
             abortSignal.addEventListener('abort', () => {
                 worker.terminate();
-                resolve();
+                resolve(-1);
             });
         }
     });
