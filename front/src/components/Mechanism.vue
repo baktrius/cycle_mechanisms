@@ -91,15 +91,6 @@ effect(() => {
     <ul v-if="mechanism.type === 'rdsp'">
       <li><Mechanism v-model="mechanism.left" /></li>
     </ul>
-    <!-- <div>
-        <strong>Type:</strong> {{ mechanism.value.type }}<br />
-        <span v-if="mechanism.value.type === 'qcd'">
-          Exponent: {{ mechanism.value.exponent }}
-        </span>
-        <span v-else-if="mechanism.value.type === 'mix'">
-
-        </span>
-      </div> -->
   </div>
 </template>
 
