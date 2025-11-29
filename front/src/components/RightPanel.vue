@@ -7,6 +7,18 @@ import { useRunsStore } from "../runsStore";
 const store = useRunsStore();
 const reversedRuns = computed(() => [...store.runsArray].reverse());
 
+function exportJson() {
+  const data = store.exportRuns();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `runs-${new Date().toISOString()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function closeAll() {
   store.clearRuns();
 }
@@ -17,6 +29,7 @@ function closeAll() {
     <div class="header">
       <h3>Runs</h3>
       <div>
+        <button @click="exportJson">Export JSON</button>
         <button @click="closeAll">Close all</button>
       </div>
     </div>
