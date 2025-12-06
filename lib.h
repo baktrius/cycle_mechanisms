@@ -69,13 +69,13 @@ real r(real x, size_t p = 4) {
     return t == 0 ? 0 : t;
 }
 
-size_t binomialCoefficient(size_t n, size_t k) {
-    size_t res = 1;
+double binomialCoefficient(size_t n, size_t k) {
+    double res = 1;
     for (size_t l = 0; l < min(k, n - k); ++l) res = (res * (n-l)) / (l+1);
     return res;
 }
 
-size_t numOfIncreasingSeqs(size_t len, size_t bound) {
+double numOfIncreasingSeqs(size_t len, size_t bound) {
     return binomialCoefficient(len + bound - 1, len);
 }
 
@@ -388,7 +388,7 @@ public:
     seqs(size_t start, size_t end, size_t size)
     : gen<l<size_t>>(l<size_t>{start-1ul})
     , start(start), end(end), size(size) {}
-    virtual size_t approxSize() const = 0;
+    virtual double approxSize() const = 0;
 };
 
 template<typename T, class... Args>
@@ -451,7 +451,7 @@ public:
         }
         return false;
     }
-    size_t approxSize() const EXPR(0);
+    double approxSize() const EXPR(0);
 };
 
 class increasing_seqs : public seqs
@@ -467,7 +467,7 @@ public:
         while(get().size() < size) get().push_back(get().back());
         return true;
     }
-    size_t approxSize() const EXPR(numOfIncreasingSeqs(size, end - start));
+    double approxSize() const EXPR(numOfIncreasingSeqs(size, end - start));
 };
 
 class increasing_asymmetric_seqs : public seqs {
@@ -488,7 +488,7 @@ public:
             else get().pop_back();
         }
     }
-    size_t approxSize() const EXPR(numOfIncreasingSeqs(size, end - start) / 2);
+    double approxSize() const EXPR(numOfIncreasingSeqs(size, end - start) / 2);
 };
 
 template<bool asymmetric = true>
@@ -528,8 +528,8 @@ public:
             else pop();
         }
     }
-    size_t approxSize() const {
-        size_t res = 0;
+    double approxSize() const {
+        double res = 0;
         for (size_t i = 1; i <= bound; ++i) {
             res += binomialCoefficient(end - start, i) * numOfIncreasingSeqs(size - i, i) / 2;
         }
@@ -645,7 +645,7 @@ public:
     }
     const l<size_t> &get() const override EXPR(innerGen->get())
     l<size_t> &get() override EXPR(innerGen->get())
-    size_t approxSize() const override EXPR(innerGen->approxSize());
+    double approxSize() const override EXPR(innerGen->approxSize());
 };
 
 bool is_balanced(conf c) {
@@ -823,7 +823,7 @@ bool check(lottery lot, seqs &gen, const Graph &g, Verbosity verbosity) {
     real associatedBaseCost = 0;
     l<real> associatedPenalties;
 
-    if (verbosity >= Verbosity::summary) cerr  << setprecision(2) << scientific << "estimated num of sequences: " << double(gen.approxSize()) << '\n';
+    if (verbosity >= Verbosity::summary) cerr  << setprecision(2) << scientific << "estimated num of sequences: " << gen.approxSize() << '\n';
     for (const l<size_t> &seq : gen.toGen()) {
         real base_cost = lotteryCost(0, seq, g, lot);
         vector<real> penalties;
@@ -876,7 +876,7 @@ real score(const Quantity &scorer, seqs &gen, const Graph &g, Verbosity verbosit
     real globalApproximationRatio = 0;
     real approximationRatioSum = 0;
     l<size_t> worstSeq;
-    if (verbosity >= Verbosity::summary) cerr  << setprecision(2) << scientific << "estimated num of sequences: " << double(gen.approxSize()) << '\n';
+    if (verbosity >= Verbosity::summary) cerr  << setprecision(2) << scientific << "estimated num of sequences: " << gen.approxSize() << '\n';
     for (const l<size_t> &seq : gen.toGen()) {
         ++sequencesNum;
         const real approx = scorer(seq, g);

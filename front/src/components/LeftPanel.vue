@@ -1,41 +1,33 @@
 <script setup>
 import Mechanism from "./Mechanism.vue";
-import { ref, computed, toRaw } from "vue";
+import MultiNumberInput from "./MultiNumberInput.vue";
+import { ref, computed, toRaw, onMounted, onBeforeMount } from "vue";
 import { useRunsStore } from "../runsStore.js";
 import { configToArgs } from "../configToArgs.js";
 
 const store = useRunsStore();
 
 const mechanism = ref({});
-const numOfVertices = ref(4);
-const numOfVertices2 = ref(4);
-const numOfAgents = ref(3);
-const numOfAgents2 = ref(3);
+const verticesInput = ref({
+  mode: "single",
+  numbers: [4],
+  text: "4",
+});
+const agentsInput = ref({
+  mode: "single",
+  numbers: [3],
+  text: "3",
+});
 const task = ref("D");
 const statesType = ref("all");
 const numDistinctVotes = ref(1);
 const verbosity = ref("V1");
 const calculationsLimit = ref(1000);
 const calculationsLimitEnabled = ref(false);
-const multirunsEnabled = ref(false);
 
-const numOfVerticesPair = computed(() => {
-  let nv = numOfVertices.value || 1;
-  let nv2 = multirunsEnabled.value ? numOfVertices2.value || 1 : nv;
-  return [nv, nv2].sort((a, b) => a - b);
-});
-const numOfAgentsPair = computed(() => {
-  let na = numOfAgents.value || 1;
-  let na2 = multirunsEnabled.value ? numOfAgents2.value || 1 : na;
-  return [na, na2].sort((a, b) => a - b);
-});
-
-const numOfRuns = computed(() => {
-  return (
-    (numOfAgentsPair.value[1] - numOfAgentsPair.value[0] + 1) *
-    (numOfVerticesPair.value[1] - numOfVerticesPair.value[0] + 1)
-  );
-});
+const numOfRuns = computed(
+  () => verticesInput.value.numbers.length * agentsInput.value.numbers.length
+);
 
 const runButtonText = computed(() => {
   return numOfRuns.value > 1
@@ -43,24 +35,7 @@ const runButtonText = computed(() => {
     : "Run Solver";
 });
 
-function rangeString(min, max) {
-  return min === max ? `${min}` : `${min}..${max}`;
-}
-
-// return an array of integers between start and end (inclusive)
-function range(start, end) {
-  const s = Number(start);
-  const e = Number(end);
-  if (!Number.isFinite(s) || !Number.isFinite(e)) return [];
-  const step = s <= e ? 1 : -1;
-  const res = [];
-  for (let i = s; step > 0 ? i <= e : i >= e; i += step) {
-    res.push(i);
-  }
-  return res;
-}
-
-function buildConfig(numAgents, numVertices) {
+function buildConfig(numAgents, numVertices, raw = true) {
   return {
     numAgents: numAgents,
     numVertices: numVertices,
@@ -71,42 +46,99 @@ function buildConfig(numAgents, numVertices) {
     calculationsLimit: calculationsLimitEnabled.value
       ? calculationsLimit.value
       : -1,
-    mechanism: structuredClone(toRaw(mechanism.value)),
+    mechanism: raw ? structuredClone(toRaw(mechanism.value)) : mechanism.value,
   };
 }
 
-function buildArgs(numAgents, numVertices) {
-  return configToArgs(buildConfig(numAgents, numVertices));
+function buildArgs(numAgents, numVertices, raw = true) {
+  return configToArgs(buildConfig(numAgents, numVertices, raw));
 }
 
 const argsPreview = computed(() => {
-  const agentsTok = rangeString(...numOfAgentsPair.value);
-  const verticesTok = rangeString(...numOfVerticesPair.value);
-  return buildArgs(agentsTok, verticesTok);
+  return buildArgs(agentsInput.value.text, verticesInput.value.text, false);
 });
 
 function runSolver() {
   const ids = [];
-  for (let a = numOfAgentsPair.value[0]; a <= numOfAgentsPair.value[1]; a++) {
+  const agents = agentsInput.value.numbers;
+  const vertices = verticesInput.value.numbers;
+
+  for (const a of agents) {
     const row = [];
-    for (
-      let v = numOfVerticesPair.value[0];
-      v <= numOfVerticesPair.value[1];
-      v++
-    ) {
+    for (const v of vertices) {
       row.push(store.addRun(buildArgs(a, v)));
     }
     ids.push(row);
   }
   if (numOfRuns.value > 1 && verbosity.value === "V1") {
-    store.addOverview(
-      argsPreview.value,
-      range(...numOfAgentsPair.value),
-      range(...numOfVerticesPair.value),
-      ids
-    );
+    store.addOverview(argsPreview.value, agents, vertices, ids);
   }
 }
+
+function getSettingsParams() {
+  const params = new URLSearchParams();
+  params.set("mechanism", JSON.stringify(toRaw(mechanism.value)));
+  params.set("vertices", JSON.stringify(toRaw(verticesInput.value)));
+  params.set("agents", JSON.stringify(toRaw(agentsInput.value)));
+  params.set("task", task.value);
+  params.set("statesType", statesType.value);
+  params.set("numDistinctVotes", numDistinctVotes.value.toString());
+  params.set("verbosity", verbosity.value);
+  params.set("calculationsLimit", calculationsLimit.value.toString());
+  params.set(
+    "calculationsLimitEnabled",
+    calculationsLimitEnabled.value.toString()
+  );
+  return params;
+}
+
+function shareSettings() {
+  const params = getSettingsParams();
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  navigator.clipboard.writeText(window.location.href).then(
+    () => {
+      alert("Settings URL copied to clipboard");
+    },
+    (err) => {
+      console.error("Failed to copy: ", err);
+      alert("Settings saved to URL");
+    }
+  );
+}
+
+function loadSettings() {
+  const params = new URLSearchParams(window.location.search);
+
+  const parseJsonParam = (key, targetRef) => {
+    const val = params.get(key);
+    if (val) {
+      try {
+        targetRef.value = JSON.parse(val);
+      } catch (e) {
+        console.warn(`Failed to parse ${key} from URL`, e);
+      }
+    }
+  };
+
+  parseJsonParam("mechanism", mechanism);
+  parseJsonParam("vertices", verticesInput);
+  parseJsonParam("agents", agentsInput);
+
+  if (params.has("task")) task.value = params.get("task");
+  if (params.has("statesType")) statesType.value = params.get("statesType");
+  if (params.has("numDistinctVotes"))
+    numDistinctVotes.value = Number(params.get("numDistinctVotes"));
+  if (params.has("verbosity")) verbosity.value = params.get("verbosity");
+  if (params.has("calculationsLimit"))
+    calculationsLimit.value = Number(params.get("calculationsLimit"));
+  if (params.has("calculationsLimitEnabled"))
+    calculationsLimitEnabled.value =
+      params.get("calculationsLimitEnabled") === "true";
+}
+
+onBeforeMount(() => {
+  loadSettings();
+});
 </script>
 
 <template>
@@ -119,62 +151,20 @@ function runSolver() {
         <Mechanism v-model="mechanism" />
       </div>
 
-      <div class="form-group" v-if="!multirunsEnabled">
-        <label for="vertices">Number of Vertices</label>
-        <input id="vertices" type="number" v-model="numOfVertices" min="1" />
-      </div>
-      <div class="form-group" v-else>
-        <label for="vertices-1">Number of Vertices</label>
-        <div class="range-row">
-          <input
-            id="vertices-1"
-            type="number"
-            v-model.number="numOfVertices"
-            min="1"
-          />
-          <span class="dots">..</span>
-          <input
-            id="vertices-2"
-            type="number"
-            v-model.number="numOfVertices2"
-            min="1"
-          />
-        </div>
-      </div>
-
-      <div class="form-group" v-if="!multirunsEnabled">
-        <label for="agents">Number of Agents</label>
-        <input id="agents" type="number" v-model="numOfAgents" min="1" />
-      </div>
-      <div class="form-group" v-else>
-        <label for="agents-1">Number of Agents</label>
-        <div class="range-row">
-          <input
-            id="agents-1"
-            type="number"
-            v-model.number="numOfAgents"
-            min="1"
-          />
-          <span class="dots">..</span>
-          <input
-            id="agents-2"
-            type="number"
-            v-model.number="numOfAgents2"
-            min="1"
-          />
-        </div>
+      <div class="form-group">
+        <MultiNumberInput
+          v-model="verticesInput"
+          label="Number of Vertices"
+          :min="1"
+        />
       </div>
 
       <div class="form-group">
-        <div class="label-row">
-          <label for="multiruns">Enable multiruns</label>
-          <input
-            id="multiruns"
-            type="checkbox"
-            v-model="multirunsEnabled"
-            style="width: auto"
-          />
-        </div>
+        <MultiNumberInput
+          v-model="agentsInput"
+          label="Number of Agents"
+          :min="1"
+        />
       </div>
 
       <div class="form-group">
@@ -244,6 +234,7 @@ function runSolver() {
       <label for="args">Resulting Args</label>
       <input type="text" :value="argsPreview.join(' ')" readonly id="args" />
       <button @click="runSolver">{{ runButtonText }}</button>
+      <button @click="shareSettings">Share Settings</button>
     </fieldset>
   </form>
 </template>

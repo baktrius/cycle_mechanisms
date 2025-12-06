@@ -66,6 +66,15 @@ export const useRunsStore = defineStore('runs', {
 
             this.runs.delete(id);
         },
+        exportRuns() {
+            const runsData = [];
+            for (const run of this.runs.values()) {
+                if (run.exportData) {
+                    runsData.push(run.exportData());
+                }
+            }
+            return runsData;
+        },
         clearRuns() {
             for (const run of this.runs.values()) {
                 run.abort?.();

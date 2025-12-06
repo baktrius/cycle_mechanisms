@@ -107,10 +107,13 @@ int main(int argc, const char **argv) {
     int exitCodeOnLimit = stoi(flag("exit code on limit", 'E', "0"));
 
     if (const char *val = flag("limit", 'L')) {
-        size_t limit = stoul(val);
-        if (limit > 0 && generator->approxSize() > limit) {
-            if (verbosity == Verbosity::answer) cout << '-';
-            else if (verbosity >= Verbosity::summary) cout << "-\n";
+        double limit = stod(val);
+        double estimatedSize = generator->approxSize();
+        if (limit > 0 && estimatedSize > limit) {
+            if (verbosity == Verbosity::answer) cout << "SEQS: " << setprecision(2) << scientific<< estimatedSize;
+            else if (verbosity >= Verbosity::summary) {
+                cout << "Estimated number of sequences: " << setprecision(2) << scientific << estimatedSize << '\n';
+            }
             return exitCodeOnLimit;
         }
     }

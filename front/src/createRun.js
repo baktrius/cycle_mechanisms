@@ -70,6 +70,17 @@ export function createRun(id, args, { throttleMs = 100 } = {}) {
         buffer = [];
     }
 
+    function exportData() {
+        return {
+            id: run.id,
+            args: toRaw(run.args),
+            status: status.value,
+            answer: answer.value,
+            exitCode: run.exitCode,
+            output: toRaw(run.output),
+        };
+    }
+
     const status = computed(() => {
         const res = run._status ?? "unknown";
         if (res !== "completed") {
@@ -126,6 +137,7 @@ export function createRun(id, args, { throttleMs = 100 } = {}) {
         start,
         abort,
         dispose,
+        exportData,
         status,
         statusText,
         statusColor,

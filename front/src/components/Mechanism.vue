@@ -25,7 +25,11 @@ effect(() => {
   // Only merge if config introduces any new top-level keys not present on mechanism.value
   const missing = Object.keys(config).some((key) => !(key in mechanism.value));
   if (missing) {
-    mechanism.value = { ...config, ...mechanism.value };
+    for (const key of Object.keys(config)) {
+      if (!(key in mechanism.value)) {
+        mechanism.value[key] = config[key];
+      }
+    }
   }
 });
 </script>
@@ -91,15 +95,6 @@ effect(() => {
     <ul v-if="mechanism.type === 'rdsp'">
       <li><Mechanism v-model="mechanism.left" /></li>
     </ul>
-    <!-- <div>
-        <strong>Type:</strong> {{ mechanism.value.type }}<br />
-        <span v-if="mechanism.value.type === 'qcd'">
-          Exponent: {{ mechanism.value.exponent }}
-        </span>
-        <span v-else-if="mechanism.value.type === 'mix'">
-
-        </span>
-      </div> -->
   </div>
 </template>
 
