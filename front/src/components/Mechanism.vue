@@ -25,7 +25,11 @@ effect(() => {
   // Only merge if config introduces any new top-level keys not present on mechanism.value
   const missing = Object.keys(config).some((key) => !(key in mechanism.value));
   if (missing) {
-    mechanism.value = { ...config, ...mechanism.value };
+    for (const key of Object.keys(config)) {
+      if (!(key in mechanism.value)) {
+        mechanism.value[key] = config[key];
+      }
+    }
   }
 });
 </script>
