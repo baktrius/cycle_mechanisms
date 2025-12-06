@@ -1,7 +1,7 @@
 <script setup>
 import Mechanism from "./Mechanism.vue";
 import MultiNumberInput from "./MultiNumberInput.vue";
-import { ref, computed, toRaw } from "vue";
+import { ref, computed, toRaw, onMounted, onBeforeMount } from "vue";
 import { useRunsStore } from "../runsStore.js";
 import { configToArgs } from "../configToArgs.js";
 
@@ -35,24 +35,7 @@ const runButtonText = computed(() => {
     : "Run Solver";
 });
 
-function rangeString(min, max) {
-  return min === max ? `${min}` : `${min}..${max}`;
-}
-
-// return an array of integers between start and end (inclusive)
-function range(start, end) {
-  const s = Number(start);
-  const e = Number(end);
-  if (!Number.isFinite(s) || !Number.isFinite(e)) return [];
-  const step = s <= e ? 1 : -1;
-  const res = [];
-  for (let i = s; step > 0 ? i <= e : i >= e; i += step) {
-    res.push(i);
-  }
-  return res;
-}
-
-function buildConfig(numAgents, numVertices) {
+function buildConfig(numAgents, numVertices, raw = true) {
   return {
     numAgents: numAgents,
     numVertices: numVertices,
@@ -63,16 +46,16 @@ function buildConfig(numAgents, numVertices) {
     calculationsLimit: calculationsLimitEnabled.value
       ? calculationsLimit.value
       : -1,
-    mechanism: structuredClone(toRaw(mechanism.value)),
+    mechanism: raw ? structuredClone(toRaw(mechanism.value)) : mechanism.value,
   };
 }
 
-function buildArgs(numAgents, numVertices) {
-  return configToArgs(buildConfig(numAgents, numVertices));
+function buildArgs(numAgents, numVertices, raw = true) {
+  return configToArgs(buildConfig(numAgents, numVertices, raw));
 }
 
 const argsPreview = computed(() => {
-  return buildArgs(agentsInput.value.text, verticesInput.value.text);
+  return buildArgs(agentsInput.value.text, verticesInput.value.text, false);
 });
 
 function runSolver() {
@@ -91,6 +74,71 @@ function runSolver() {
     store.addOverview(argsPreview.value, agents, vertices, ids);
   }
 }
+
+function getSettingsParams() {
+  const params = new URLSearchParams();
+  params.set("mechanism", JSON.stringify(toRaw(mechanism.value)));
+  params.set("vertices", JSON.stringify(toRaw(verticesInput.value)));
+  params.set("agents", JSON.stringify(toRaw(agentsInput.value)));
+  params.set("task", task.value);
+  params.set("statesType", statesType.value);
+  params.set("numDistinctVotes", numDistinctVotes.value.toString());
+  params.set("verbosity", verbosity.value);
+  params.set("calculationsLimit", calculationsLimit.value.toString());
+  params.set(
+    "calculationsLimitEnabled",
+    calculationsLimitEnabled.value.toString()
+  );
+  return params;
+}
+
+function shareSettings() {
+  const params = getSettingsParams();
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  navigator.clipboard.writeText(window.location.href).then(
+    () => {
+      alert("Settings URL copied to clipboard");
+    },
+    (err) => {
+      console.error("Failed to copy: ", err);
+      alert("Settings saved to URL");
+    }
+  );
+}
+
+function loadSettings() {
+  const params = new URLSearchParams(window.location.search);
+
+  const parseJsonParam = (key, targetRef) => {
+    const val = params.get(key);
+    if (val) {
+      try {
+        targetRef.value = JSON.parse(val);
+      } catch (e) {
+        console.warn(`Failed to parse ${key} from URL`, e);
+      }
+    }
+  };
+
+  parseJsonParam("mechanism", mechanism);
+  parseJsonParam("vertices", verticesInput);
+  parseJsonParam("agents", agentsInput);
+
+  if (params.has("task")) task.value = params.get("task");
+  if (params.has("statesType")) statesType.value = params.get("statesType");
+  if (params.has("numDistinctVotes"))
+    numDistinctVotes.value = Number(params.get("numDistinctVotes"));
+  if (params.has("verbosity")) verbosity.value = params.get("verbosity");
+  if (params.has("calculationsLimit"))
+    calculationsLimit.value = Number(params.get("calculationsLimit"));
+  if (params.has("calculationsLimitEnabled"))
+    calculationsLimitEnabled.value =
+      params.get("calculationsLimitEnabled") === "true";
+}
+
+onBeforeMount(() => {
+  loadSettings();
+});
 </script>
 
 <template>
@@ -186,6 +234,7 @@ function runSolver() {
       <label for="args">Resulting Args</label>
       <input type="text" :value="argsPreview.join(' ')" readonly id="args" />
       <button @click="runSolver">{{ runButtonText }}</button>
+      <button @click="shareSettings">Share Settings</button>
     </fieldset>
   </form>
 </template>
