@@ -95,7 +95,7 @@ function getSettingsParams() {
 function shareSettings() {
   const params = getSettingsParams();
   const newUrl = `${window.location.pathname}?${params.toString()}`;
-  navigator.clipboard.writeText(window.location.href).then(
+  navigator.clipboard.writeText(newUrl).then(
     () => {
       alert("Settings URL copied to clipboard");
     },
@@ -147,28 +147,51 @@ onBeforeMount(() => {
       <legend><h3>Mechanism Editor</h3></legend>
 
       <div class="form-group">
-        <label>Mechanism</label>
+        <label
+          >Mechanism
+          <a href="#/docs/mechanisms.md" class="info-icon" title="Help"
+            >i</a
+          ></label
+        >
         <Mechanism v-model="mechanism" />
       </div>
 
       <div class="form-group">
-        <MultiNumberInput
-          v-model="verticesInput"
-          label="Number of Vertices"
-          :min="1"
-        />
+        <label
+          >Number of Vertices
+          <a
+            href="#/docs/parameters.md#number-of-vertices"
+            class="info-icon"
+            title="Help"
+            >i</a
+          ></label
+        >
+        <MultiNumberInput v-model="verticesInput" :min="1" />
       </div>
 
       <div class="form-group">
-        <MultiNumberInput
-          v-model="agentsInput"
-          label="Number of Agents"
-          :min="1"
-        />
+        <label
+          >Number of Agents
+          <a
+            href="#/docs/parameters.md#number-of-agents"
+            class="info-icon"
+            title="Help"
+            >i</a
+          ></label
+        >
+        <MultiNumberInput v-model="agentsInput" :min="1" />
       </div>
 
       <div class="form-group">
-        <label for="statesType">States of the world</label>
+        <label for="statesType"
+          >States of the world
+          <a
+            href="#/docs/parameters.md#states-of-the-world"
+            class="info-icon"
+            title="Help"
+            >i</a
+          ></label
+        >
         <select id="statesType" v-model="statesType">
           <option value="all">All</option>
           <option value="I">Not reversed</option>
@@ -187,7 +210,12 @@ onBeforeMount(() => {
       </div>
 
       <div class="form-group">
-        <label for="task">Task</label>
+        <label for="task"
+          >Task
+          <a href="#/docs/parameters.md#tasks" class="info-icon" title="Help"
+            >i</a
+          ></label
+        >
         <select id="task" v-model="task">
           <option value="D">Check Strategyproofness</option>
           <option value="A">Calculate Approximation Ratio</option>
@@ -196,7 +224,15 @@ onBeforeMount(() => {
         </select>
       </div>
       <div class="form-group">
-        <label for="verbosity">Verbosity</label>
+        <label for="verbosity"
+          >Verbosity
+          <a
+            href="#/docs/parameters.md#verbosity"
+            class="info-icon"
+            title="Help"
+            >i</a
+          ></label
+        >
         <select id="verbosity" v-model="verbosity">
           <option value="V1">Inline Answer</option>
           <option value="S">Summary</option>
@@ -207,7 +243,15 @@ onBeforeMount(() => {
 
       <div class="form-group">
         <div class="label-row">
-          <label for="calculations-limit">Calculations limit</label>
+          <label for="calculations-limit"
+            >Calculations limit
+            <a
+              href="#/docs/parameters.md#calculations-limit"
+              class="info-icon"
+              title="Help"
+              >i</a
+            ></label
+          >
           <div style="display: flex; align-items: center; gap: 8px">
             <label
               style="
@@ -234,7 +278,7 @@ onBeforeMount(() => {
       <label for="args">Resulting Args</label>
       <input type="text" :value="argsPreview.join(' ')" readonly id="args" />
       <button @click="runSolver">{{ runButtonText }}</button>
-      <button @click="shareSettings">Share Settings</button>
+      <!-- <button @click="shareSettings">Share Settings</button> -->
     </fieldset>
   </form>
 </template>
@@ -284,5 +328,24 @@ textarea {
 }
 .dots {
   padding: 0 4px;
+}
+
+.info-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 50%;
+  background-color: #ddd;
+  color: #333;
+  font-size: 12px;
+  text-decoration: none;
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.info-icon:hover {
+  background-color: #bbb;
 }
 </style>

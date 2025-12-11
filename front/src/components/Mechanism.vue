@@ -4,6 +4,14 @@ import { computed, effect } from "vue";
 defineOptions({ name: "Mechanism" });
 
 const mechanism = defineModel({ required: true });
+const props = defineProps({
+  extended: { type: Boolean, default: true },
+});
+
+const EXTENDED_MECHANISM_TYPES = {
+  mix: { label: "mix", schema: { left: {}, right: {}, ratio: 0.5 } },
+  // rdsp: { label: "rdsp", schema: { left: {} } },
+};
 
 const MECHANISM_TYPES = {
   opt: { label: "opt" },
@@ -13,15 +21,19 @@ const MECHANISM_TYPES = {
   sqcd: { label: "sqcd" },
   dbl: { label: "dbl", schema: { exponent: 1 } },
   r3pcd: { label: "r3pcd" },
-  mix: { label: "mix", schema: { left: {}, right: {}, ratio: 0.5 } },
-  rdsp: { label: "rdsp", schema: { left: {} } },
 };
+
+const availableTypes = computed(() => {
+  return props.extended
+    ? { ...MECHANISM_TYPES, ...EXTENDED_MECHANISM_TYPES }
+    : MECHANISM_TYPES;
+});
 
 effect(() => {
   if (mechanism.value.type === undefined) {
     mechanism.value.type = "rd";
   }
-  const config = MECHANISM_TYPES[mechanism.value.type]?.schema || {};
+  const config = availableTypes.value[mechanism.value.type]?.schema || {};
   // Only merge if config introduces any new top-level keys not present on mechanism.value
   const missing = Object.keys(config).some((key) => !(key in mechanism.value));
   if (missing) {
@@ -39,7 +51,7 @@ effect(() => {
     <span class="mech-type-select">
       <label for="mech-type">Type: </label>
       <select id="mech-type" v-model="mechanism.type">
-        <option v-for="(meta, key) in MECHANISM_TYPES" :key="key" :value="key">
+        <option v-for="(meta, key) in availableTypes" :key="key" :value="key">
           {{ meta.label }}
         </option>
       </select>
@@ -78,7 +90,7 @@ effect(() => {
           max="1"
         />
         *
-        <Mechanism v-model="mechanism.left" />
+        <Mechanism v-model="mechanism.left" :extended="false" />
       </li>
       <li>
         <input
@@ -89,7 +101,7 @@ effect(() => {
           size="5"
         />
         *
-        <Mechanism v-model="mechanism.right" />
+        <Mechanism v-model="mechanism.right" :extended="true" />
       </li>
     </ul>
     <ul v-if="mechanism.type === 'rdsp'">

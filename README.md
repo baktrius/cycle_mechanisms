@@ -13,6 +13,8 @@ Moreover it supports:
 *   **Result Aggregation:** View collective results and summaries for batch runs.
 *   **Data Export:** Export run data to JSON for further custom analysis.
 
+Comprehensive documentation for mechanisms and parameters is available directly within the application (Right Panel). You can also browse the source documentation files in [`front/public/docs/`](front/public/docs/index.md).
+
 ## Native C++ Solver
 
 The core logic is implemented in `main.cpp` and `lib.h`. While the web interface is the primary tool, the native C++ solver is approximately **2x faster** and can be more convenient for scripting or integration into other pipelines.
