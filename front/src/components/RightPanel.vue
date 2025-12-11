@@ -1,11 +1,26 @@
 <script setup>
-import SolverPanel from "./SolverPanel.vue";
-import OverviewPanel from "./OverviewPanel.vue";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useRunsStore } from "../runsStore";
+import { useRouter, useRoute } from "vue-router";
 
 const store = useRunsStore();
-const reversedRuns = computed(() => [...store.runsArray].reverse());
+const router = useRouter();
+const route = useRoute();
+
+const activeTab = computed(() => {
+  if (route.name === "runs") return "runs";
+  if (route.name === "docs") return "docs";
+  return "docs";
+});
+
+watch(
+  () => store.runsArray.length,
+  (newLen, oldLen) => {
+    if (newLen > oldLen) {
+      router.push({ name: "runs" });
+    }
+  }
+);
 
 function exportJson() {
   const data = store.exportRuns();
@@ -27,22 +42,27 @@ function closeAll() {
 <template>
   <div class="right-panel-content">
     <div class="header">
-      <h3>Runs</h3>
-      <div>
+      <div class="tabs">
+        <button
+          :class="{ active: activeTab === 'runs' }"
+          @click="router.push({ name: 'runs' })"
+        >
+          Runs
+        </button>
+        <button
+          :class="{ active: activeTab === 'docs' }"
+          @click="router.push({ name: 'docs', params: { docId: 'index.md' } })"
+        >
+          Documentation
+        </button>
+      </div>
+      <div v-if="activeTab === 'runs'">
         <button @click="exportJson">Export JSON</button>
         <button @click="closeAll">Close all</button>
       </div>
     </div>
-    <div class="content">
-      <div v-for="{ id, type } in reversedRuns" :key="id">
-        <div class="entry-wrapper">
-          <span class="dot">●</span>
-          <div class="entry">
-            <SolverPanel :id="id" v-if="type === 'run'" />
-            <OverviewPanel :id="id" v-else-if="type === 'overview'" />
-          </div>
-        </div>
-      </div>
+    <div class="content" :class="{ 'no-padding': activeTab === 'docs' }">
+      <router-view></router-view>
     </div>
   </div>
 </template>
@@ -58,6 +78,23 @@ h3 {
   padding-left: 1em;
   padding-right: 1em;
   border-bottom: 1px solid #ccc;
+  height: 40px;
+  background-origin: padding-box;
+  flex-shrink: 0;
+}
+
+.tabs button {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #666;
+}
+
+.tabs button.active {
+  color: #000;
+  border-bottom: 2px solid #4caf50;
 }
 
 .right-panel-content {
@@ -71,6 +108,9 @@ h3 {
   padding-right: 1em;
   flex-grow: 1;
   overflow: auto;
+}
+.content.no-padding {
+  padding: 0;
 }
 .entry-wrapper {
   display: flex;
